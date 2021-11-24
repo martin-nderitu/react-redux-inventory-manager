@@ -1,7 +1,8 @@
 ## Inventory Manager Frontend
 
-Frontend for a simple inventory manager
+A simple inventory manager app created using react and react-redux.
 ## [**Demo**](https://react-redux-inventory-manager.herokuapp.com/)
+[Backend code](https://github.com/martin-nderitu/inventory-manager-backend)
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app), using the [Redux](https://redux.js.org/) and [Redux Toolkit](https://redux-toolkit.js.org/) template.
 

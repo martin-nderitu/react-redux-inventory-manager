@@ -14,7 +14,6 @@ export interface TableProps {
     data: any[];
     checked: { [k: string]: boolean };
     setChecked: React.Dispatch<React.SetStateAction<{ [k: string]: boolean }>>
-    // handleChecked: React.Dispatch<React.SetStateAction<string[]>>
     selection: boolean;
 }
 

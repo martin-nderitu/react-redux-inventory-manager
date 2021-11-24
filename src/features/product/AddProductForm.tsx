@@ -15,7 +15,7 @@ import {Category, DraftProduct} from "../api";
 export const AddProductForm = () => {
     const [message, setMessage] = useState<Message | null>(null);
     const [addNewProduct] = useAddNewProductMutation();
-    const result = useGetCategoriesQuery();
+    const result = useGetCategoriesQuery("?limit=all");
     const history = useHistory();
     const initialValues: DraftProduct = {
         name: "", unitCost: "", unitPrice: "", store: "", counter: "", description: "", categoryId: ""

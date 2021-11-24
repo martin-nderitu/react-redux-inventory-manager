@@ -14,7 +14,7 @@ import {Message} from "../../app";
 export const AddTransferForm = () => {
     const [message, setMessage] = useState<Message | null>(null);
     const [addNewTransfer] = useAddNewTransferMutation();
-    const allProducts = useGetProductsQuery();
+    const allProducts = useGetProductsQuery("?limit=all");
     const products = useMemo(() => {
         if (allProducts.isSuccess && allProducts.data.products) {
             return allProducts.data.products.map( (product: Product) => ({ value: product.id, label: product.name }))

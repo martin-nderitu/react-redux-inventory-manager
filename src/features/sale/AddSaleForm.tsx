@@ -15,7 +15,7 @@ import {Message} from "../../app";
 export const AddSaleForm = () => {
     const [message, setMessage] = useState<Message | null>(null);
     const [addNewSale] = useAddNewSaleMutation();
-    const allProducts = useGetProductsQuery();
+    const allProducts = useGetProductsQuery("?limit=all");
     const products = useMemo(() => {
         if (allProducts.isSuccess && allProducts.data.products) {
             return allProducts.data.products.map( (product: Product) => ({ value: product.id, label: product.name }))

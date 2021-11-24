@@ -21,7 +21,7 @@ export const EditProductForm = ({ match }: RouteComponentProps<TParams>) => {
     const result = useGetProductQuery(productId);
     const [updateProduct] = useEditProductMutation();
     const [destroyProduct] = useDestroyProductMutation();
-    const categoriesResult = useGetCategoriesQuery();
+    const categoriesResult = useGetCategoriesQuery("?limit=all");
     const categories = useMemo(() => {
         if (categoriesResult.isSuccess && categoriesResult.data.categories) {
             return categoriesResult.data.categories.map( (category: Category) => ({

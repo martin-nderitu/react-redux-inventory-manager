@@ -24,7 +24,7 @@ export const EditSaleForm = ({ match }: RouteComponentProps<TParams>) => {
     const [updateSale] = useEditSaleMutation();
     const [cancelSale] = useCancelSaleMutation();
     const [destroySale] = useDestroySaleMutation();
-    const allProducts = useGetProductsQuery();
+    const allProducts = useGetProductsQuery("?limit=all");
     const products = useMemo(() => {
         if (allProducts.isSuccess && allProducts.data.products) {
             return allProducts.data.products.map( (product: Product) => ({ value: product.id, label: product.name }))

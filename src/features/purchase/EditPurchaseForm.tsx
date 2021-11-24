@@ -24,8 +24,8 @@ export const EditPurchaseForm = ({ match }: RouteComponentProps<TParams>) => {
     const result = useGetPurchaseQuery(purchaseId);
     const [updatePurchase] = useEditPurchaseMutation();
     const [destroyPurchase] = useDestroyPurchaseMutation();
-    const allProducts = useGetProductsQuery();
-    const allSuppliers = useGetSuppliersQuery();
+    const allProducts = useGetProductsQuery("?limit=all");
+    const allSuppliers = useGetSuppliersQuery("?limit=all");
     const products = useMemo(() => {
         if (allProducts.isSuccess && allProducts.data.products) {
             return allProducts.data.products.map( (product: Product) => ({ value: product.id, label: product.name }))

@@ -31,6 +31,9 @@ const Home = () => {
                         <p className="card-text">
                             Create, read, update and delete purchases and suppliers
                         </p>
+                        <p className="card-text">
+                            Purchases module is used to add stock to the system
+                        </p>
                     </div>
                 </div>
 

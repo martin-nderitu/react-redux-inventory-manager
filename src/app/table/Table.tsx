@@ -4,24 +4,19 @@ import {isEmpty} from "../libs/isEmpty";
 import {TableProps} from "./index";
 
 
-export default function Table ({ cols, data, handleChecked, selection }: TableProps) {
-    const [checked, setChecked] = useState<{[k: string]: boolean}>({});
-    const [ids, setIds] = useState<number[]>([]);
-    const selectAllRef = useRef(null);
-
-    useEffect( () => {
-        if (selection) {
-            const ids = data.map((item: any) => item.id);
-            setIds(ids);
-        }
-    }, [data, selection]);
+export default function Table ({ cols, data, checked, setChecked, selection }: TableProps) {
+    const [ids] = useState<number[]>(() => {
+        if (selection) { return data.map((item: any) => item.id) }
+        else { return [] }
+    });
+    const selectAllRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         const checkedItems = Object.keys(checked).filter(id => checked[id]);
-        // @ts-ignore
-        selectAllRef.current.indeterminate = checkedItems.length > 0 && checkedItems.length !== ids.length;
-        handleChecked(checkedItems);
-    }, [ids.length, checked, handleChecked]);
+       if (selectAllRef.current !== null) {
+           selectAllRef.current.indeterminate = checkedItems.length > 0 && checkedItems.length !== ids.length;
+       }
+    }, [ids.length, checked]);
 
     // handle checkbox click
     const handleClick = (event: any) => {

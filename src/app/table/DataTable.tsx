@@ -64,7 +64,7 @@ export default function DataTable (props: DataTableProps) {
         searchFormInitialValues,
         SearchFormInputs,   // html input fields for search form
     } = props;
-    const [checked, setChecked] = useState<string[]>([]);
+    const [checked, setChecked] = useState<{[k: string]: boolean}>({});
     const [isLoading, setIsLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(5);
@@ -87,7 +87,9 @@ export default function DataTable (props: DataTableProps) {
         if (stringifiedData !== "null") { setIsLoading(false) }
     }, [stringifiedData])
 
-    useEffect(() => setPage(1), [stringifiedSearchFormValues, limit]);
+    useEffect(() => {
+        setPage(1)
+    }, [stringifiedSearchFormValues, limit]);
 
     useEffect(() => {
         const query = generateQuery({ ...searchFormValues, page, limit });
@@ -95,6 +97,11 @@ export default function DataTable (props: DataTableProps) {
     },[page, limit, stringifiedSearchFormValues, handleQuery, searchFormValues]);
 
     const handleSearchFormSubmit = (values: {[k: string]: string}) => setSearchFormValues({...values});
+
+    const handleDestroy = () => {
+        destroyChecked(Object.keys(checked).filter(id => checked[id]));
+        setChecked({});
+    }
 
     return (
         <div className="container-fluid pt-3">
@@ -121,16 +128,11 @@ export default function DataTable (props: DataTableProps) {
                         </div>
                     )}
 
-                    {checked.length > 0 && (
-                        <Actions
-                            rows={checked.length}
-                            title={title}
-                            handleDestroy={() => {
-                                destroyChecked(checked);
-                                setChecked([]);
-                            }}
-                        />
-                    )}
+                    <Actions
+                        checked={checked}
+                        title={title}
+                        handleDestroy={handleDestroy}
+                    />
 
                 </div>
 
@@ -141,7 +143,9 @@ export default function DataTable (props: DataTableProps) {
                                 <Table
                                     cols={cols}
                                     data={data}
-                                    handleChecked={setChecked}
+                                    checked={checked}
+                                    setChecked={setChecked}
+                                    // handleChecked={setChecked}
                                     selection={selection}
                                 />
                                 : <h3 className="text-center">No results found</h3>

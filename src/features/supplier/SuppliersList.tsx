@@ -1,11 +1,6 @@
 import React, {useMemo, useEffect, useCallback, useState} from "react";
-import {useAppSelector, useAppDispatch} from "../../app/hooks";
-import {
-    fetchSuppliers,
-    destroySupplier,
-    selectAllSuppliers,
-    selectSuppliersPagination,
-} from "./supplierSlice";
+
+import {useGetSuppliersQuery, useDestroySupplierMutation} from "./supplierSlice";
 import DataTable from "../../app/table/DataTable";
 import {Input} from "../../app/form/fields";
 import {Message} from "../../app";
@@ -17,10 +12,10 @@ const SuppliersSearchForm = () => (
 );
 
 export const SuppliersList = React.memo(() => {
+    const [query, setQuery] = useState("");
     const [message, setMessage] = useState<Message | null>(null);
-    const dispatch = useAppDispatch();
-    const suppliers = useAppSelector(selectAllSuppliers);
-    const pagination = useAppSelector(selectSuppliersPagination);
+    const result = useGetSuppliersQuery(query);
+    const [destroySupplier] = useDestroySupplierMutation();
     const cols = useMemo(() => [
         { name: "Name", accessor: "name", link: "/suppliers/:id" },
         { name: "Phone", accessor: "phone" },
@@ -28,31 +23,33 @@ export const SuppliersList = React.memo(() => {
     ], []);
 
     useEffect(() => {
-        dispatch(fetchSuppliers());
-    }, [dispatch]);
+        if (result.data?.error) {
+            setMessage({ type: "danger", message: result.data.error })
+        }
+    }, [result.data?.error]);
 
     const handleQuery = useCallback((query: string) => {
-            if (query.length) { dispatch(fetchSuppliers(query)) }
-        }, [dispatch]
-    );
+        if (query.length) { setQuery(query) }
+    }, []);
 
     const destroyChecked = useCallback(async (checked: string[]) => {
         if (checked.length) {
-            const result = await dispatch(destroySupplier(checked.join()));
-            const { message, error, invalidData } = result.payload;
-            if (message) { setMessage({ type: "success", message }) }
-            if (error) { setMessage({ type: "danger", message: error }) }
-            if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
-
-            dispatch(fetchSuppliers());
+            try {
+                const {message, error, invalidData} = await destroySupplier(checked.join()).unwrap();
+                if (message) { setMessage({ type: "success", message }) }
+                if (error) { setMessage({ type: "danger", message: error }) }
+                if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
+            } catch (error) {
+                setMessage({ type: "danger", message: error.message });
+            }
         }
-    }, [dispatch]);
+    }, [destroySupplier]);
 
     return (
         <DataTable
             cols={cols}
-            data={suppliers}
-            pagination={pagination}
+            data={result.isSuccess && result.data.suppliers ? result.data.suppliers : null}
+            pagination={result.isSuccess && result.data.pagination ? result.data.pagination : { count: 0 }}
             title="Suppliers"
             message={message}
             setMessage={setMessage}

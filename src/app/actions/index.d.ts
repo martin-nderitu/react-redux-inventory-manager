@@ -1,5 +1,5 @@
 export interface ActionsProps {
-    rows: number;
+    checked: { [k: string]: boolean };
     title: string;
     handleDestroy: () => void;
 }

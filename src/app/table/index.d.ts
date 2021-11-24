@@ -12,7 +12,9 @@ interface Col {
 export interface TableProps {
     cols: Col [];
     data: any[];
-    handleChecked: React.Dispatch<React.SetStateAction<string[]>>
+    checked: { [k: string]: boolean };
+    setChecked: React.Dispatch<React.SetStateAction<{ [k: string]: boolean }>>
+    // handleChecked: React.Dispatch<React.SetStateAction<string[]>>
     selection: boolean;
 }
 

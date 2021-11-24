@@ -1,103 +1,63 @@
-import {createAsyncThunk, createSlice, createEntityAdapter, EntityState} from "@reduxjs/toolkit";
-import { RootState } from '../../app/store';
-import {Pagination} from "../../app/table";
-import {Body} from "../../api/client";
-import {Transfer} from "../../api/server";
+import {emptySplitApi} from "../api/apiSlice";
+import {Transfers, TransferState, DraftTransfer, Error, FormErrors, Message} from "../api";
 
-
-export interface TransferState {
-    pagination: Pagination;
-    status: "idle" | "loading" | "succeeded" | "failed";
-}
-
-const transfersAdapter = createEntityAdapter();
-
-const initialState: EntityState<unknown> & TransferState = transfersAdapter.getInitialState({
-    pagination: {
-        count: 0, offset: 0, limit: 0, currentPage: 1
-    },
-    status: "idle",
-});
-
-
-export const fetchTransfers = createAsyncThunk("transfer/fetchTransfers", async (query: string = "") => {
-    const response = await Transfer.findAll(query);
-    return response.data;
+export const transferApi = emptySplitApi.injectEndpoints({
+    endpoints: (builder) => ({
+        getTransfers: builder.query<Transfers | Error, string | void>({
+            query: (query) => ({
+                url: query && query.length ? `/transfers${query}`: "/transfers",
+                validateStatus: (response, result) => {
+                    if (result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            providesTags: (result, error, arg) => {
+                if (result?.transfers) {
+                    return ["Transfer", ...result.transfers.map(({ id }) => ({type: "Transfer" as const, id}))]
+                } else {
+                    return ["Transfer"]
+                }
+            }
+        }),
+        getTransfer: builder.query<TransferState | FormErrors | Error, string>({
+            query: (id) => ({
+                url: `/transfers/${id}`,
+                validateStatus: (response, result) => {
+                    if (result?.invalidData || result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            providesTags: (result, error, arg) => [{ type: "Transfer", id: arg }]
+        }),
+        addNewTransfer: builder.mutation<TransferState | FormErrors | Error, DraftTransfer>({
+            query: (category) => ({
+                url: "/transfers",
+                method: "POST",
+                body: category,
+                validateStatus: (response, result) => {
+                    if (result?.invalidData || result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            invalidatesTags: ["Transfer"]
+        }),
+        destroyTransfer: builder.mutation<Message | FormErrors | Error, string>({
+            query: (id) => ({
+                url: `/transfers/${id}`,
+                method: "DELETE",
+                validateStatus: (response, result) => {
+                    if (result?.invalidData || result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            invalidatesTags: ["Transfer"]
+        })
+    })
 })
 
-export const createTransfer = createAsyncThunk("transfer/createTransfer", async (values: Body) => {
-    const response = await Transfer.create(values);
-    return response.data;
-});
-
-export const fetchTransfer = createAsyncThunk("transfer/fetchTransfer", async (transferId: string) => {
-    const response = await Transfer.find(transferId);
-    return response.data;
-});
-
-export const destroyTransfer = createAsyncThunk("transfer/destroyTransfer", async (transferId: string) => {
-    const response = await Transfer.destroy(transferId);
-    return response.data;
-});
-
-
-const transferSlice = createSlice({
-    name: "transfers",
-    initialState,
-    reducers: {},
-    extraReducers(builder) {
-        builder
-            .addCase(fetchTransfers.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(fetchTransfers.fulfilled, (state, action) => {
-                const {transfers, pagination} = action.payload;
-                if (transfers && pagination) {
-                    state.pagination = pagination;
-                    transfersAdapter.setAll(state, transfers);
-                }
-                state.status = "succeeded";
-            })
-
-            .addCase(createTransfer.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(createTransfer.fulfilled, (state, action) => {
-                const {transfer} = action.payload;
-                if (transfer) {
-                    transfersAdapter.setOne(state, transfer);
-                }
-                state.status = "succeeded";
-            })
-
-            .addCase(fetchTransfer.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(fetchTransfer.fulfilled, (state, action) => {
-                const {transfer} = action.payload;
-                if (transfer) { transfersAdapter.setOne(state, transfer) }
-                state.status = "succeeded";
-            })
-
-            .addCase(destroyTransfer.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(destroyTransfer.fulfilled, (state, action) => {
-                state.status = "succeeded";
-            })
-    }
-});
-
-export default transferSlice.reducer;
-
 export const {
-    selectIds: selectTransferIds,
-    selectEntities: selectTransferEntities,
-    selectAll: selectAllTransfers,
-    selectTotal: selectTotalTransfers,   // select total number of transfers in state
-    selectById: selectTransferById,
-} = transfersAdapter.getSelectors((state: RootState) => state.transfers);
-
-export const selectTransfersPagination = (state: RootState) => state.transfers.pagination;
-
-export const selectTransfersStatus = (state: RootState) => state.transfers.status;
+    useGetTransfersQuery,
+    useGetTransferQuery,
+    useAddNewTransferMutation,
+    useDestroyTransferMutation,
+} = transferApi;

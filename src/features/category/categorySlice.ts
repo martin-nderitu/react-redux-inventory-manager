@@ -1,115 +1,76 @@
-import {createAsyncThunk, createEntityAdapter, createSlice, EntityState} from "@reduxjs/toolkit";
-import {Category} from "../../api/server";
-import {RootState} from '../../app/store';
-import {Pagination} from "../../app/table";
-import {Body} from "../../api/client";
+import {emptySplitApi} from "../api/apiSlice";
+import {Categories, CategoryState, DraftCategory, Error, FormErrors, Message} from "../api";
 
-interface CategoryState {
-    pagination: Pagination;
-    status: "idle" | "loading" | "succeeded" | "failed";
-}
-
-const categoriesAdapter = createEntityAdapter();
-
-const initialState: EntityState<unknown> & CategoryState = categoriesAdapter.getInitialState({
-    pagination: {
-        count: 0, offset: 0, limit: 0, currentPage: 1
-    },
-    status: "idle",
-});
-
-export const fetchCategories = createAsyncThunk("category/fetchCategories", async (query: string = "") => {
-    const response = await Category.findAll(query);
-    return response.data;
+export const categoryApi = emptySplitApi.injectEndpoints({
+    endpoints: (builder) => ({
+        getCategories: builder.query<Categories | Error, string | void>({
+            query: (query) => ({
+                url: query && query.length ? `/categories${query}`: "/categories",
+                validateStatus: (response, result) => {
+                    if (result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            providesTags: (result, error, arg) => {
+                if (result?.categories) {
+                    return ["Category", ...result.categories.map(({ id }) => ({type: "Category" as const, id}))]
+                } else {
+                    return ["Category"]
+                }
+            }
+        }),
+        getCategory: builder.query<CategoryState | FormErrors | Error, string>({
+            query: (id) => ({
+                url: `/categories/${id}`,
+                validateStatus: (response, result) => {
+                    if (result?.invalidData || result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            providesTags: (result, error, arg) => [{ type: "Category", id: arg }]
+        }),
+        addNewCategory: builder.mutation<CategoryState | FormErrors | Error, DraftCategory>({
+            query: (category) => ({
+                url: "/categories",
+                method: "POST",
+                body: category,
+                validateStatus: (response, result) => {
+                    if (result?.invalidData || result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            invalidatesTags: ["Category"]
+        }),
+        editCategory: builder.mutation<CategoryState | FormErrors | Error, DraftCategory>({
+            query: (category) => ({
+                url: "/categories",
+                method: "PATCH",
+                body: category,
+                validateStatus: (response, result) => {
+                    if (result?.invalidData || result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            invalidatesTags: (result, error, arg) => [{ type: "Category", id: arg.id }]
+        }),
+        destroyCategory: builder.mutation<Message | FormErrors | Error, string>({
+            query: (id) => ({
+                url: `/categories/${id}`,
+                method: "DELETE",
+                validateStatus: (response, result) => {
+                    if (result?.invalidData || result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            invalidatesTags: ["Category"]
+        })
+    })
 })
 
-export const createCategory = createAsyncThunk("category/createCategory", async (values: Body) => {
-    const response = await Category.create(values);
-    return response.data;
-});
-
-export const fetchCategory = createAsyncThunk("category/fetchCategory", async (categoryId: string) => {
-    const response = await Category.find(categoryId);
-    return response.data;
-});
-
-export const updateCategory = createAsyncThunk("category/updateCategory", async (values: Body) => {
-    const response = await Category.update(values);
-    return response.data;
-});
-
-export const destroyCategory = createAsyncThunk("category/destroyCategory", async (categoryId: string) => {
-    const response = await Category.destroy(categoryId);
-    return response.data;
-});
-
-
-const categorySlice = createSlice({
-    name: "categories",
-    initialState,
-    reducers: {},
-    extraReducers(builder) {
-        builder
-            .addCase(fetchCategories.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(fetchCategories.fulfilled, (state, action) => {
-                const {categories, pagination} = action.payload;
-                if (categories && pagination) {
-                    state.pagination = pagination;
-                    categoriesAdapter.setAll(state, categories);
-                }
-                state.status = "succeeded";
-            })
-
-            .addCase(createCategory.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(createCategory.fulfilled, (state, action) => {
-                const {category} = action.payload;
-                if (category) {
-                    categoriesAdapter.setOne(state, category);
-                }
-                state.status = "succeeded";
-            })
-
-            .addCase(fetchCategory.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(fetchCategory.fulfilled, (state, action) => {
-                const {category} = action.payload;
-                if (category) { categoriesAdapter.setOne(state, category) }
-                state.status = "succeeded";
-            })
-
-            .addCase(updateCategory.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(updateCategory.fulfilled, (state, action) => {
-                const {category} = action.payload;
-                if (category) { categoriesAdapter.setOne(state, category) }
-                state.status = "succeeded";
-            })
-
-            .addCase(destroyCategory.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(destroyCategory.fulfilled, (state, action) => {
-                state.status = "succeeded";
-            })
-    }
-});
-
-export default categorySlice.reducer;
-
 export const {
-    selectIds: selectCategoryIds,
-    selectEntities: selectCategoryEntities,
-    selectAll: selectAllCategories,
-    selectTotal: selectTotalCategories,   // select total number of categories in state
-    selectById: selectCategoryById,
-} = categoriesAdapter.getSelectors((state: RootState) => state.categories);
-
-export const selectCategoryPagination = (state: RootState) => state.categories.pagination;
-
-export const selectCategoryStatus = (state: RootState) => state.categories.status;
+    useGetCategoriesQuery,
+    useGetCategoryQuery,
+    useAddNewCategoryMutation,
+    useEditCategoryMutation,
+    useDestroyCategoryMutation,
+} = categoryApi;

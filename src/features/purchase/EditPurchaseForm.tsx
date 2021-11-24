@@ -1,27 +1,18 @@
-import {useState, useEffect, useCallback} from "react";
+import {useState, useEffect, useCallback, useMemo} from "react";
 import {useHistory, RouteComponentProps} from "react-router-dom";
 import {Formik} from "formik";
 
-import {useAppDispatch, useAppSelector} from "../../app/hooks";
-import {
-    selectPurchaseById,
-    fetchPurchase,
-    updatePurchase,
-    destroyPurchase, fetchPurchases,
-} from "./purchaseSlice";
-import {RootState} from "../../app/store";
+import {useGetPurchaseQuery, useEditPurchaseMutation, useDestroyPurchaseMutation} from "./purchaseSlice";
+import {useGetSuppliersQuery} from "../supplier/supplierSlice";
+import {useGetProductsQuery} from "../product/productSlice";
 import {Input, Select} from "../../app/form/fields";
 import FormCard from "../../app/card/FormCard";
 import Modal from "../../app/modal/Modal";
 import Spinner from "../../app/spinners/Spinner";
 import ButtonSpinner from "../../app/spinners/ButtonSpinner";
-import {isEmpty} from "../../app/libs/isEmpty";
 import PurchaseSchema from "./PurchaseSchema";
 import {Message} from "../../app";
-import {IProduct, IPurchase, ISupplier} from "../index";
-import {fetchSuppliers, selectAllSuppliers} from "../supplier/supplierSlice";
-import {fetchProducts, selectAllProducts} from "../product/productSlice";
-
+import {Product, Supplier} from "../api";
 
 
 type TParams = { purchaseId: string; };
@@ -30,81 +21,86 @@ type TParams = { purchaseId: string; };
 export const EditPurchaseForm = ({ match }: RouteComponentProps<TParams>) => {
     const { purchaseId } = match.params;
     const [message, setMessage] = useState<Message | null>(null);
-    const purchase = useAppSelector((state: RootState) => selectPurchaseById(state, purchaseId)) as IPurchase | undefined;
-    const suppliers = useAppSelector(selectAllSuppliers)
-        // @ts-ignore
-        .map( (supplier: ISupplier) => {
-            return { value: supplier.id, label: supplier.name }
-        });
-    const products = useAppSelector(selectAllProducts)
-        // @ts-ignore
-        .map( (product: IProduct) => {
-            return { value: product.id, label: product.name }
-        });
-    const dispatch = useAppDispatch();
+    const result = useGetPurchaseQuery(purchaseId);
+    const [updatePurchase] = useEditPurchaseMutation();
+    const [destroyPurchase] = useDestroyPurchaseMutation();
+    const allProducts = useGetProductsQuery();
+    const allSuppliers = useGetSuppliersQuery();
+    const products = useMemo(() => {
+        if (allProducts.isSuccess && allProducts.data.products) {
+            return allProducts.data.products.map( (product: Product) => ({ value: product.id, label: product.name }))
+        }
+        return [{ value: "", label: "No results found" }]
+    }, [allProducts.isSuccess, allProducts.data?.products]);
+    const suppliers = useMemo(() => {
+        if (allSuppliers.isSuccess && allSuppliers.data.suppliers) {
+            return allSuppliers.data.suppliers.map( (supplier: Supplier) => ({ value: supplier.id, label: supplier.name }))
+        }
+        return [{ value: "", label: "No results found" }]
+    }, [allSuppliers.isSuccess, allSuppliers.data?.suppliers]);
+    const initialValues = useMemo(() => {
+        if (result.isSuccess && result.data.purchase) {
+            return {...result.data.purchase};
+        }
+        else {
+            return { supplierId: "", productId: "", quantity: "", unitCost: "", unitPrice: "", location: "" }
+        }
+    }, [result.isSuccess, result.data?.purchase])
     const history = useHistory();
 
     useEffect(() => {
-        if (purchaseId.length) {
-            dispatch(fetchSuppliers("?limit=all"));
-            dispatch(fetchProducts("?limit=all"));
-            dispatch(fetchPurchase(purchaseId));
+        if (message?.type && message?.message) {
+            window.scrollTo(0, 0);
         }
-    }, [purchaseId, dispatch]);
+    }, [message?.type, message?.message])
 
     const handleDestroy = useCallback(async () => {
         if (purchaseId.length) {
-            const result = await dispatch(destroyPurchase(purchaseId));
-            const { message, error, invalidData } = result.payload;
-            if (message) {
-                history.push({
-                    pathname: "/purchases",
-                    state: { message: { type: "success", message } }
-                });
+            try {
+                const {message, error, invalidData} = await destroyPurchase(purchaseId).unwrap();
+                if (message) {
+                    history.push({
+                        pathname: "/purchases",
+                        state: { message: { type: "success", message } }
+                    });
+                }
+                if (error) { setMessage({ type: "danger", message: error }) }
+                if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
+            } catch (error) {
+                setMessage({ type: "danger", message: error.message });
             }
-            if (error) { setMessage({ type: "danger", message: error }) }
-            if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
-
-            dispatch(fetchPurchases());
         }
-    }, [purchaseId, dispatch, history])
+    }, [purchaseId, history, destroyPurchase])
 
     const form = (
         <Formik
             enableReinitialize={true}
-            initialValues={ purchase && !isEmpty(purchase) ? purchase : {
-                supplierId: "", productId: "", quantity: "", unitCost: "", unitPrice: "", location: ""
-            }}
+            initialValues={initialValues}
             validationSchema={PurchaseSchema}
             onSubmit={async (values, actions) => {
-                const result = await dispatch(updatePurchase(values));
-                actions.setSubmitting(false);
-
-                const {purchase, error, invalidData} = result.payload;
-
-                if (purchase) {
-                    const message = { type: "success", message: "Purchase updated successfully" }
-                    history.push({
-                        pathname: "/purchases",
-                        state: { message }
-                    });
-                }
-                if (error) {
-                    window.scrollTo(0, 0);
-                    setMessage({ type: "danger", message: error });
-                }
-                if (invalidData) {
-                    window.scrollTo(0, 0);
-                    actions.setErrors(invalidData);
-                    setMessage({
-                        type: "danger", message: "Please correct the errors below"
-                    });
+                try {
+                    const {purchase, error, invalidData} = await updatePurchase(values).unwrap();
+                    actions.setSubmitting(false);
+                    if (purchase) {
+                        const message = { type: "success", message: "Purchase updated successfully" }
+                        history.push({
+                            pathname: "/purchases",
+                            state: { message }
+                        });
+                    }
+                    if (error) { setMessage({ type: "danger", message: error }) }
+                    if (invalidData) {
+                        actions.setErrors(invalidData);
+                        setMessage({ type: "danger", message: "Please correct the errors below" });
+                    }
+                } catch (error) {
+                    setMessage({ type: "danger", message: error.message });
                 }
             }}
         >
             {props => (
                 <>
-                    {isEmpty(purchase) ? <Spinner/> : (
+                    {result.isFetching ? <Spinner/> : (
                         <form onSubmit={props.handleSubmit}>
                             <Select name="supplierId" label="Select supplier" options={suppliers} required={true}>
                                 <option value="">Select a supplier</option>

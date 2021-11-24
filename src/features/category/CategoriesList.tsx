@@ -1,9 +1,6 @@
-import React, {useMemo, useEffect, useCallback, useState} from "react";
-import {useAppSelector, useAppDispatch} from "../../app/hooks";
-import {
-    destroyCategory,
-    fetchCategories, selectAllCategories, selectCategoryPagination
-} from "./categorySlice";
+import React, {useMemo, useCallback, useState, useEffect} from "react";
+
+import {useGetCategoriesQuery, useDestroyCategoryMutation} from "./categorySlice";
 import DataTable from "../../app/table/DataTable";
 import {Input} from "../../app/form/fields";
 import {Message} from "../../app";
@@ -14,41 +11,43 @@ const CategoriesSearchForm = () => (
 );
 
 export const CategoriesList = React.memo(() => {
+    const [query, setQuery] = useState("");
     const [message, setMessage] = useState<Message | null>(null);
-    const dispatch = useAppDispatch();
-    const categories = useAppSelector(selectAllCategories);
-    const pagination = useAppSelector(selectCategoryPagination);
+    const result = useGetCategoriesQuery(query);
+    const [destroyCategory] = useDestroyCategoryMutation();
     const cols = useMemo(() => [
         { name: "Name", accessor: "name", link: "/categories/:id" },
         { name: "Description", accessor: "description" },
     ], []);
 
     useEffect(() => {
-        dispatch(fetchCategories());
-    }, [dispatch]);
+        if (result.data?.error) {
+            setMessage({ type: "danger", message: result.data.error })
+        }
+    }, [result.data?.error]);
 
     const handleQuery = useCallback((query: string) => {
-            if (query.length) { dispatch(fetchCategories(query)) }
-        }, [dispatch]
-    );
+        if (query.length) { setQuery(query) }
+    }, []);
 
     const destroyChecked = useCallback(async (checked: string[]) => {
         if (checked.length) {
-            const result = await dispatch(destroyCategory(checked.join()));
-            const { message, error, invalidData } = result.payload;
-            if (message) { setMessage({ type: "success", message }) }
-            if (error) { setMessage({ type: "danger", message: error }) }
-            if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
-
-            dispatch(fetchCategories());
+            try {
+                const {message, error, invalidData} = await destroyCategory(checked.join()).unwrap();
+                if (message) { setMessage({ type: "success", message }) }
+                if (error) { setMessage({ type: "danger", message: error }) }
+                if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
+            } catch (error) {
+                setMessage({ type: "danger", message: error.message });
+            }
         }
-    }, [dispatch]);
+    }, [destroyCategory]);
 
     return (
         <DataTable
             cols={cols}
-            data={categories}
-            pagination={pagination}
+            data={result.isSuccess && result.data.categories ? result.data.categories : null}
+            pagination={result.isSuccess && result.data.pagination ? result.data.pagination : { count: 0 }}
             title="Categories"
             message={message}
             setMessage={setMessage}

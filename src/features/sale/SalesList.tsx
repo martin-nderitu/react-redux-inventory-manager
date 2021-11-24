@@ -1,15 +1,10 @@
 import React, {useMemo, useEffect, useCallback, useState} from "react";
-import {useAppSelector, useAppDispatch} from "../../app/hooks";
-import {
-    fetchSales,
-    destroySale,
-    selectAllSales,
-    selectSalesPagination,
-} from "./salesSlice";
+
+import {useGetSalesQuery, useDestroySaleMutation} from "./salesSlice";
 import DataTable from "../../app/table/DataTable";
 import {Input} from "../../app/form/fields";
 import {Message} from "../../app";
-import {IProduct} from "../index";
+import {Product} from "../api";
 
 
 const SalesSearchForm = () => (
@@ -18,10 +13,10 @@ const SalesSearchForm = () => (
 );
 
 export const SalesList = React.memo(() => {
+    const [query, setQuery] = useState("");
     const [message, setMessage] = useState<Message | null>(null);
-    const dispatch = useAppDispatch();
-    const sales = useAppSelector(selectAllSales);
-    const pagination = useAppSelector(selectSalesPagination);
+    const result = useGetSalesQuery(query);
+    const [destroySale] = useDestroySaleMutation();
     const cols = useMemo(() => [
         {
             name: "",
@@ -33,37 +28,39 @@ export const SalesList = React.memo(() => {
             name: "Product",
             accessor: "product",
             link: "/products/:productId",
-            callback: (product: IProduct | undefined) => product?.name,
+            callback: (product: Product | undefined) => product?.name,
         },
         { name: "Quantity", accessor: "quantity" },
     ], []);
 
     useEffect(() => {
-        dispatch(fetchSales());
-    }, [dispatch]);
+        if (result.data?.error) {
+            setMessage({ type: "danger", message: result.data.error })
+        }
+    }, [result.data?.error]);
 
     const handleQuery = useCallback((query: string) => {
-            if (query.length) { dispatch(fetchSales(query)) }
-        }, [dispatch]
-    );
+        if (query.length) { setQuery(query) }
+    }, []);
 
     const destroyChecked = useCallback(async (checked: string[]) => {
         if (checked.length) {
-            const result = await dispatch(destroySale(checked.join()));
-            const { message, error, invalidData } = result.payload;
-            if (message) { setMessage({ type: "success", message }) }
-            if (error) { setMessage({ type: "danger", message: error }) }
-            if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
-
-            dispatch(fetchSales());
+            try {
+                const {message, error, invalidData} = await destroySale(checked.join()).unwrap();
+                if (message) { setMessage({ type: "success", message }) }
+                if (error) { setMessage({ type: "danger", message: error }) }
+                if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
+            } catch (error) {
+                setMessage({ type: "danger", message: error.message });
+            }
         }
-    }, [dispatch]);
+    }, [destroySale]);
 
     return (
         <DataTable
             cols={cols}
-            data={sales}
-            pagination={pagination}
+            data={result.isSuccess && result.data.sales ? result.data.sales : null}
+            pagination={result.isSuccess && result.data.pagination ? result.data.pagination : { count: 0 }}
             title="Sales"
             message={message}
             setMessage={setMessage}

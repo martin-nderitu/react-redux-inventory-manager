@@ -1,50 +1,51 @@
-import {useState} from "react";
-import {useAppDispatch} from "../../app/hooks";
+import {useEffect, useState} from "react";
 import {useHistory} from "react-router-dom";
 import {Formik} from "formik";
 
-import {createSupplier} from "./supplierSlice";
+import {useAddNewSupplierMutation} from "./supplierSlice";
 import {Input} from "../../app/form/fields";
 import FormCard from "../../app/card/FormCard";
 import ButtonSpinner from "../../app/spinners/ButtonSpinner";
 import SupplierSchema from "./SupplierSchema";
 import {Message} from "../../app";
+import {DraftSupplier} from "../api";
 
 
 export const AddSupplierForm = () => {
     const [message, setMessage] = useState<Message | null>(null);
-    const dispatch = useAppDispatch();
+    const [addNewSupplier] = useAddNewSupplierMutation();
     const history = useHistory();
+    const initialValues: DraftSupplier = { name: "", phone: "", email: "" }
+
+    useEffect(() => {
+        if (message?.type && message?.message) {
+            window.scrollTo(0, 0);
+        }
+    }, [message?.type, message?.message])
 
     const form = (
         <Formik
-            initialValues={{ name: "", phone: "", email: undefined }}
+            initialValues={initialValues}
             validationSchema={SupplierSchema}
             onSubmit={async (values, actions) => {
                 if (values.email === "") { delete values.email; }
-                const result = await dispatch(createSupplier(values));
-                actions.setSubmitting(false);
-
-                const {supplier, error, invalidData} = result.payload;
-                console.log("payload = ", result.payload)
-
-                if (supplier) {
-                    const message = { type: "success", message: "Supplier created successfully" }
-                    history.push({
-                        pathname: "/suppliers",
-                        state: { message }
-                    });
-                }
-                if (error) {
-                    window.scrollTo(0, 0);
-                    setMessage({ type: "danger", message: error });
-                }
-                if (invalidData) {
-                    window.scrollTo(0, 0);
-                    actions.setErrors(invalidData);
-                    setMessage({
-                        type: "danger", message: "Please correct the errors below"
-                    });
+                try {
+                    const {supplier, error, invalidData} = await addNewSupplier(values).unwrap();
+                    actions.setSubmitting(false);
+                    if (supplier) {
+                        const message = { type: "success", message: "Supplier created successfully" }
+                        history.push({
+                            pathname: "/suppliers",
+                            state: { message }
+                        });
+                    }
+                    if (error) { setMessage({ type: "danger", message: error }) }
+                    if (invalidData) {
+                        actions.setErrors(invalidData);
+                        setMessage({ type: "danger", message: "Please correct the errors below" });
+                    }
+                } catch (error) {
+                    setMessage({ type: "danger", message: error.message });
                 }
             }}
         >

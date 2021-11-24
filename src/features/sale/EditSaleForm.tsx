@@ -1,27 +1,17 @@
-import {useState, useEffect, useCallback} from "react";
+import {useState, useEffect, useCallback, useMemo} from "react";
 import {useHistory, RouteComponentProps} from "react-router-dom";
 import {Formik} from "formik";
 
-import {useAppDispatch, useAppSelector} from "../../app/hooks";
-import {
-    selectSaleById,
-    fetchSale,
-    updateSale,
-    destroySale,
-    fetchSales,
-    cancelSale,
-} from "./salesSlice";
-import {fetchProducts, selectAllProducts} from "../product/productSlice";
-import {RootState} from "../../app/store";
+import {useGetSaleQuery, useEditSaleMutation, useCancelSaleMutation, useDestroySaleMutation} from "./salesSlice";
+import {useGetProductsQuery} from "../product/productSlice";
 import {Input, Select} from "../../app/form/fields";
 import FormCard from "../../app/card/FormCard";
 import Modal from "../../app/modal/Modal";
 import Spinner from "../../app/spinners/Spinner";
 import ButtonSpinner from "../../app/spinners/ButtonSpinner";
-import {isEmpty} from "../../app/libs/isEmpty";
 import SaleSchema from "./SaleSchema";
 import {Message} from "../../app";
-import {IProduct, ISale} from "../index";
+import {Product} from "../api";
 
 
 type TParams = { saleId: string; };
@@ -30,90 +20,98 @@ type TParams = { saleId: string; };
 export const EditSaleForm = ({ match }: RouteComponentProps<TParams>) => {
     const { saleId } = match.params;
     const [message, setMessage] = useState<Message | null>(null);
-    const sale = useAppSelector((state: RootState) => selectSaleById(state, saleId)) as ISale | undefined;
-    const products = useAppSelector(selectAllProducts)
-        // @ts-ignore
-        .map( (product: IProduct) => {
-            return { value: product.id, label: product.name }
-        });
-    const dispatch = useAppDispatch();
+    const result = useGetSaleQuery(saleId);
+    const [updateSale] = useEditSaleMutation();
+    const [cancelSale] = useCancelSaleMutation();
+    const [destroySale] = useDestroySaleMutation();
+    const allProducts = useGetProductsQuery();
+    const products = useMemo(() => {
+        if (allProducts.isSuccess && allProducts.data.products) {
+            return allProducts.data.products.map( (product: Product) => ({ value: product.id, label: product.name }))
+        }
+        return [{ value: "", label: "No results found" }]
+    }, [allProducts.isSuccess, allProducts.data?.products]);
+    const initialValues = useMemo(() => {
+        if (result.isSuccess && result.data.sale) {
+            return {...result.data.sale};
+        }
+        else {
+            return { productId: "", quantity: "" }
+        }
+    }, [result.isSuccess, result.data?.sale])
     const history = useHistory();
 
     useEffect(() => {
-        if (saleId.length) {
-            dispatch(fetchProducts("?limit=all"));
-            dispatch(fetchSale(saleId));
+        if (message?.type && message?.message) {
+            window.scrollTo(0, 0);
         }
-    }, [saleId, dispatch]);
+    }, [message?.type, message?.message])
 
     const handleDestroy = useCallback(async () => {
         if (saleId.length) {
-            const result = await dispatch(destroySale(saleId));
-            const { message, error, invalidData } = result.payload;
-            if (message) {
-                history.push({
-                    pathname: "/sales",
-                    state: { message: { type: "success", message } }
-                });
+            try {
+                const {message, error, invalidData} = await destroySale(saleId).unwrap();
+                if (message) {
+                    history.push({
+                        pathname: "/sales",
+                        state: { message: { type: "success", message } }
+                    });
+                }
+                if (error) { setMessage({ type: "danger", message: error }) }
+                if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
+            } catch (error) {
+                setMessage({ type: "danger", message: error.message });
             }
-            if (error) { setMessage({ type: "danger", message: error }) }
-            if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
-
-            dispatch(fetchSales());
         }
-    }, [saleId, dispatch, history])
+    }, [saleId, history, destroySale])
 
     const handleCancel = useCallback(async () => {
         if (saleId.length) {
-            const result = await dispatch(cancelSale(saleId));
-            const { message, error, invalidData } = result.payload;
-            if (message) {
-                history.push({
-                    pathname: "/sales",
-                    state: { message: { type: "success", message } }
-                });
-            }
-            if (error) { setMessage({ type: "danger", message: error }) }
-            if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
-
-            dispatch(fetchSales());
+            try {
+                const {message, error, invalidData} = await cancelSale(saleId).unwrap();
+                if (message) {
+                    history.push({
+                        pathname: "/sales",
+                        state: { message: { type: "success", message } }
+                    });
+                }
+                if (error) { setMessage({ type: "danger", message: error }) }
+                if (invalidData) { setMessage({ type: "danger", message: invalidData.id }) }
+            } catch (error) {
+                setMessage({ type: "danger", message: error.message });
+            };
         }
-    }, [saleId, dispatch, history])
+    }, [saleId, history, cancelSale])
 
     const form = (
         <Formik
             enableReinitialize={true}
-            initialValues={ sale && !isEmpty(sale) ? sale : { productId: "", quantity: "" } }
+            initialValues={initialValues}
             validationSchema={SaleSchema}
             onSubmit={async (values, actions) => {
-                const result = await dispatch(updateSale(values));
-                actions.setSubmitting(false);
-
-                const {sale, error, invalidData} = result.payload;
-
-                if (sale) {
-                    const message = { type: "success", message: "Sale updated successfully" }
-                    history.push({
-                        pathname: "/sales",
-                        state: { message }
-                    });
-                }
-                if (error) {
-                    window.scrollTo(0, 0);
-                    setMessage({ type: "danger", message: error });
-                }
-                if (invalidData) {
-                    window.scrollTo(0, 0);
-                    actions.setErrors(invalidData);
-                    setMessage({
-                        type: "danger", message: "Please correct the errors below"
-                    });
+                try {
+                    const {sale, error, invalidData} = await updateSale(values).unwrap();
+                    actions.setSubmitting(false);
+                    if (sale) {
+                        const message = { type: "success", message: "Sale updated successfully" }
+                        history.push({
+                            pathname: "/sales",
+                            state: { message }
+                        });
+                    }
+                    if (error) { setMessage({ type: "danger", message: error }) }
+                    if (invalidData) {
+                        actions.setErrors(invalidData);
+                        setMessage({ type: "danger", message: "Please correct the errors below" });
+                    }
+                } catch (error) {
+                    setMessage({ type: "danger", message: error.message });
                 }
             }}
         >
             {props => (
                 <>
-                    {isEmpty(sale) ? <Spinner/> : (
+                    {result.isFetching ? <Spinner/> : (
                         <form onSubmit={props.handleSubmit}>
                             <Select name="productId" label="Select product" options={products} required={true}>
                                 <option value="">Select a product</option>

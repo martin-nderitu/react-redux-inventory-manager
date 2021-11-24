@@ -1,116 +1,76 @@
-import {createAsyncThunk, createSlice, createEntityAdapter, EntityState} from "@reduxjs/toolkit";
-import {RootState} from '../../app/store';
-import {Pagination} from "../../app/table";
-import {Body} from "../../api/client";
-import {Product} from "../../api/server";
+import {emptySplitApi} from "../api/apiSlice";
+import {Products, ProductState, DraftProduct, Error, FormErrors, Message} from "../api";
 
-
-export interface ProductState {
-    pagination: Pagination;
-    status: "idle" | "loading" | "succeeded" | "failed";
-}
-
-const productsAdapter = createEntityAdapter();
-
-const initialState: EntityState<unknown> & ProductState = productsAdapter.getInitialState({
-    pagination: {
-        count: 0, offset: 0, limit: 0, currentPage: 1
-    },
-    status: "idle",
-});
-
-export const fetchProducts = createAsyncThunk("product/fetchProducts", async (query: string = "") => {
-    const response = await Product.findAll(query);
-    return response.data;
+export const productApi = emptySplitApi.injectEndpoints({
+    endpoints: (builder) => ({
+        getProducts: builder.query<Products | Error, string | void>({
+            query: (query) => ({
+                url: query && query.length ? `/products${query}`: "/products",
+                validateStatus: (response, result) => {
+                    if (result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            providesTags: (result, error, arg) => {
+                if (result?.products) {
+                    return ["Product", ...result.products.map(({ id }) => ({type: "Product" as const, id}))]
+                } else {
+                    return ["Product"]
+                }
+            }
+        }),
+        getProduct: builder.query<ProductState | FormErrors | Error, string>({
+            query: (id) => ({
+                url: `/products/${id}`,
+                validateStatus: (response, result) => {
+                    if (result?.invalidData || result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            providesTags: (result, error, arg) => [{ type: "Product", id: arg }]
+        }),
+        addNewProduct: builder.mutation<ProductState | FormErrors | Error, DraftProduct>({
+            query: (category) => ({
+                url: "/products",
+                method: "POST",
+                body: category,
+                validateStatus: (response, result) => {
+                    if (result?.invalidData || result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            invalidatesTags: ["Product"]
+        }),
+        editProduct: builder.mutation<ProductState | FormErrors | Error, DraftProduct>({
+            query: (category) => ({
+                url: "/products",
+                method: "PATCH",
+                body: category,
+                validateStatus: (response, result) => {
+                    if (result?.invalidData || result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            invalidatesTags: (result, error, arg) => [{ type: "Product", id: arg.id }]
+        }),
+        destroyProduct: builder.mutation<Message | FormErrors | Error, string>({
+            query: (id) => ({
+                url: `/products/${id}`,
+                method: "DELETE",
+                validateStatus: (response, result) => {
+                    if (result?.invalidData || result?.error) { return true }
+                    return response.ok;
+                },
+            }),
+            invalidatesTags: ["Product"]
+        })
+    })
 })
 
-export const createProduct = createAsyncThunk("product/createProduct", async (values: Body) => {
-    const response = await Product.create(values);
-    return response.data;
-});
-
-export const fetchProduct = createAsyncThunk("product/fetchProduct", async (productId: string) => {
-    const response = await Product.find(productId);
-    return response.data;
-});
-
-export const updateProduct = createAsyncThunk("product/updateProduct", async (values: Body) => {
-    const response = await Product.update(values);
-    return response.data;
-});
-
-export const destroyProduct = createAsyncThunk("product/destroyProduct", async (productId: string) => {
-    const response = await Product.destroy(productId);
-    return response.data;
-});
-
-
-const productSlice = createSlice({
-    name: "products",
-    initialState,
-    reducers: {},
-    extraReducers(builder) {
-        builder
-            .addCase(fetchProducts.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(fetchProducts.fulfilled, (state, action) => {
-                const {products, pagination} = action.payload;
-                if (products && pagination) {
-                    state.pagination = pagination;
-                    productsAdapter.setAll(state, products);
-                }
-                state.status = "succeeded";
-            })
-
-            .addCase(createProduct.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(createProduct.fulfilled, (state, action) => {
-                const {product} = action.payload;
-                if (product) {
-                    productsAdapter.setOne(state, product);
-                }
-                state.status = "succeeded";
-            })
-
-            .addCase(fetchProduct.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(fetchProduct.fulfilled, (state, action) => {
-                const {product} = action.payload;
-                if (product) { productsAdapter.setOne(state, product) }
-                state.status = "succeeded";
-            })
-
-            .addCase(updateProduct.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(updateProduct.fulfilled, (state, action) => {
-                const {product} = action.payload;
-                if (product) { productsAdapter.setOne(state, product) }
-                state.status = "succeeded";
-            })
-
-            .addCase(destroyProduct.pending, (state, action) => {
-                state.status = "loading";
-            })
-            .addCase(destroyProduct.fulfilled, (state, action) => {
-                state.status = "succeeded";
-            })
-    }
-});
-
-export default productSlice.reducer;
-
 export const {
-    selectIds: selectProductIds,
-    selectEntities: selectProductEntities,
-    selectAll: selectAllProducts,
-    selectTotal: selectTotalProducts,   // select total number of products in state
-    selectById: selectProductById,
-} = productsAdapter.getSelectors((state: RootState) => state.products);
-
-export const selectProductPagination = (state: RootState) => state.products.pagination;
-
-export const selectProductStatus = (state: RootState) => state.products.status;
+    useGetProductsQuery,
+    useGetProductQuery,
+    useAddNewProductMutation,
+    useEditProductMutation,
+    useDestroyProductMutation,
+} = productApi;

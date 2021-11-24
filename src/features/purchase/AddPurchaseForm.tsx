@@ -1,38 +1,42 @@
-import {useEffect, useState} from "react";
-import {useAppDispatch, useAppSelector} from "../../app/hooks";
+import {useEffect, useState, useMemo} from "react";
 import {useHistory} from "react-router-dom";
 import {Formik} from "formik";
 
-import {createPurchase} from "./purchaseSlice";
-import {fetchSuppliers, selectAllSuppliers} from "../supplier/supplierSlice";
-import {fetchProducts, selectAllProducts} from "../product/productSlice";
+import {useAddNewPurchaseMutation} from "./purchaseSlice";
+import {useGetProductsQuery} from "../product/productSlice";
+import {useGetSuppliersQuery} from "../supplier/supplierSlice";
 import {Input, Select} from "../../app/form/fields";
 import FormCard from "../../app/card/FormCard";
 import ButtonSpinner from "../../app/spinners/ButtonSpinner";
 import PurchaseSchema from "./PurchaseSchema";
-import {IProduct, ISupplier} from "../index";
+import {Product, Supplier} from "../api";
 import {Message} from "../../app";
 
 
 export const AddPurchaseForm = () => {
     const [message, setMessage] = useState<Message | null>(null);
-    const suppliers = useAppSelector(selectAllSuppliers)
-        // @ts-ignore
-        .map( (supplier: ISupplier) => {
-            return { value: supplier.id, label: supplier.name }
-        });
-    const products = useAppSelector(selectAllProducts)
-        // @ts-ignore
-        .map( (product: IProduct) => {
-            return { value: product.id, label: product.name }
-        });
-    const dispatch = useAppDispatch();
+    const [addNewPurchase] = useAddNewPurchaseMutation();
+    const allProducts = useGetProductsQuery();
+    const allSuppliers = useGetSuppliersQuery();
+    const products = useMemo(() => {
+        if (allProducts.isSuccess && allProducts.data.products) {
+            return allProducts.data.products.map( (product: Product) => ({ value: product.id, label: product.name }))
+        }
+        return [{ value: "", label: "No results found" }]
+    }, [allProducts.isSuccess, allProducts.data?.products]);
+    const suppliers = useMemo(() => {
+        if (allSuppliers.isSuccess && allSuppliers.data.suppliers) {
+            return allSuppliers.data.suppliers.map( (supplier: Supplier) => ({ value: supplier.id, label: supplier.name }))
+        }
+        return [{ value: "", label: "No results found" }]
+    }, [allSuppliers.isSuccess, allSuppliers.data?.suppliers]);
     const history = useHistory();
 
     useEffect(() => {
-        dispatch(fetchSuppliers("?limit=all"));
-        dispatch(fetchProducts("?limit=all"));
-    }, [dispatch]);
+        if (message?.type && message?.message) {
+            window.scrollTo(0, 0);
+        }
+    }, [message?.type, message?.message])
 
     const form = (
         <Formik
@@ -41,27 +45,23 @@ export const AddPurchaseForm = () => {
             }}
             validationSchema={PurchaseSchema}
             onSubmit={async (values, actions) => {
-                const result = await dispatch(createPurchase(values));
-                actions.setSubmitting(false);
-                const {purchase, error, invalidData} = result.payload;
-
-                if (purchase) {
-                    const message = { type: "success", message: "Purchase created successfully" }
-                    history.push({
-                        pathname: "/purchases",
-                        state: { message }
-                    });
-                }
-                if (error) {
-                    window.scrollTo(0, 0);
-                    setMessage({ type: "danger", message: error });
-                }
-                if (invalidData) {
-                    window.scrollTo(0, 0);
-                    actions.setErrors(invalidData);
-                    setMessage({
-                        type: "danger", message: "Please correct the errors below"
-                    });
+                try {
+                    const {purchase, error, invalidData} = await addNewPurchase(values).unwrap();
+                    actions.setSubmitting(false);
+                    if (purchase) {
+                        const message = { type: "success", message: "Purchase created successfully" }
+                        history.push({
+                            pathname: "/purchases",
+                            state: { message }
+                        });
+                    }
+                    if (error) { setMessage({ type: "danger", message: error }) }
+                    if (invalidData) {
+                        actions.setErrors(invalidData);
+                        setMessage({ type: "danger", message: "Please correct the errors below" });
+                    }
+                } catch (error) {
+                    setMessage({ type: "danger", message: error.message });
                 }
             }}
         >

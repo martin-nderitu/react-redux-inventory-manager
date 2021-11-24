@@ -1,20 +1,11 @@
-import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit';
-import categoryReducer from "../features/category/categorySlice";
-import productReducer from "../features/product/productSlice";
-import purchaseReducer from "../features/purchase/purchaseSlice";
-import saleReducer from "../features/sale/salesSlice";
-import suppliersReducer from "../features/supplier/supplierSlice";
-import transferReducer from "../features/transfer/transferSlice";
+import { configureStore, ThunkAction, Action } from "@reduxjs/toolkit";
+import {emptySplitApi} from "../features/api/apiSlice";
 
 export const store = configureStore({
   reducer: {
-    categories: categoryReducer,
-    products: productReducer,
-    purchases: purchaseReducer,
-    sales: saleReducer,
-    suppliers: suppliersReducer,
-    transfers: transferReducer,
+    [emptySplitApi.reducerPath]: emptySplitApi.reducer,
   },
+  middleware: getDefaultMiddleware => getDefaultMiddleware().concat(emptySplitApi.middleware)
 });
 
 export type AppDispatch = typeof store.dispatch;

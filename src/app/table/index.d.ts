@@ -9,17 +9,22 @@ interface Col {
     callback?: (value: any) => string;
 }
 
+export interface Item {
+    [k: string]: any;
+    id: string;
+}
+
 export interface TableProps {
     cols: Col [];
-    data: any[];
+    data: Item[];
     checked: { [k: string]: boolean };
     setChecked: React.Dispatch<React.SetStateAction<{ [k: string]: boolean }>>
     selection: boolean;
 }
 
 export interface DataTableProps {
-    cols: any [];
-    data: any [] | null;
+    cols: Col[];
+    data: Item[] | null;
     pagination: Pagination;
     title: string;
     message: Message | null;

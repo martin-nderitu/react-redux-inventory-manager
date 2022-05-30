@@ -3,7 +3,7 @@ import React, {useMemo, useEffect, useCallback, useState} from "react";
 import {useGetTransfersQuery, useDestroyTransferMutation} from "./transferSlice";
 import DataTable from "../../app/table/DataTable";
 import {Input} from "../../app/form/fields";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 import {Product} from "../api";
 
 
@@ -22,12 +22,18 @@ export const TransfersList = React.memo(() => {
             name: "Product",
             accessor: "product",
             link: "/products/:productId",
-            callback: (product: Product | undefined) => product?.name,
+            callback: (product: Product) => product.name,
         },
         { name: "Quantity", accessor: "quantity" },
         { name: "Source", accessor: "source" },
         { name: "Destination", accessor: "destination" },
     ], []);
+
+    const transfers = (
+        result.isSuccess ? (
+            result.data.transfers ? result.data.transfers : []
+        ) : null
+    );
 
     useEffect(() => {
         if (result.data?.error) {
@@ -55,7 +61,7 @@ export const TransfersList = React.memo(() => {
     return (
         <DataTable
             cols={cols}
-            data={result.isSuccess && result.data.transfers ? result.data.transfers : null}
+            data={transfers}
             pagination={result.isSuccess && result.data.pagination ? result.data.pagination : { count: 0 }}
             title="Transfers"
             message={message}

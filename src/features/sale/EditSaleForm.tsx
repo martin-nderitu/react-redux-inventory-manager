@@ -10,7 +10,7 @@ import Modal from "../../app/modal/Modal";
 import Spinner from "../../app/spinners/Spinner";
 import ButtonSpinner from "../../app/spinners/ButtonSpinner";
 import SaleSchema from "./SaleSchema";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 import {Product} from "../api";
 
 

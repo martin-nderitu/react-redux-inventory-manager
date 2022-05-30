@@ -3,7 +3,7 @@ import React, {useMemo, useEffect, useCallback, useState} from "react";
 import {useGetSuppliersQuery, useDestroySupplierMutation} from "./supplierSlice";
 import DataTable from "../../app/table/DataTable";
 import {Input} from "../../app/form/fields";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 
 
 const SuppliersSearchForm = () => (
@@ -21,6 +21,12 @@ export const SuppliersList = React.memo(() => {
         { name: "Phone", accessor: "phone" },
         { name: "Email", accessor: "email" },
     ], []);
+
+    const suppliers = (
+        result.isSuccess ? (
+            result.data.suppliers ? result.data.suppliers : []
+        ) : null
+    );
 
     useEffect(() => {
         if (result.data?.error) {
@@ -48,7 +54,7 @@ export const SuppliersList = React.memo(() => {
     return (
         <DataTable
             cols={cols}
-            data={result.isSuccess && result.data.suppliers ? result.data.suppliers : null}
+            data={suppliers}
             pagination={result.isSuccess && result.data.pagination ? result.data.pagination : { count: 0 }}
             title="Suppliers"
             message={message}

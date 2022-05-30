@@ -11,7 +11,7 @@ import Modal from "../../app/modal/Modal";
 import Spinner from "../../app/spinners/Spinner";
 import ButtonSpinner from "../../app/spinners/ButtonSpinner";
 import PurchaseSchema from "./PurchaseSchema";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 import {Product, Supplier} from "../api";
 
 

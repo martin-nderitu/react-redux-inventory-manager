@@ -3,7 +3,7 @@ import React, {useMemo, useEffect, useCallback, useState} from "react";
 import {useGetPurchasesQuery, useDestroyPurchaseMutation} from "./purchaseSlice";
 import DataTable from "../../app/table/DataTable";
 import {Input} from "../../app/form/fields";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 import {Product, Supplier} from "../api";
 
 
@@ -32,19 +32,25 @@ export const PurchasesList = React.memo(() => {
             name: "Product",
             accessor: "product",
             link: "/products/:productId",
-            callback: (product: Product | undefined) => product?.name,
+            callback: (product: Product) => product.name,
         },
         {
             name: "Supplier",
             accessor: "supplier",
             link: "/suppliers/:supplierId",
-            callback: (supplier: Supplier) => supplier?.name,
+            callback: (supplier: Supplier) => supplier.name,
         },
         { name: "Quantity", accessor: "quantity" },
         { name: "Unit cost", accessor: "unitCost" },
         { name: "Unit price", accessor: "unitPrice" },
         { name: "Location", accessor: "location" },
     ], []);
+
+    const purchases = (
+        result.isSuccess ? (
+            result.data.purchases ? result.data.purchases : []
+        ) : null
+    );
 
     useEffect(() => {
         if (result.data?.error) {
@@ -72,7 +78,7 @@ export const PurchasesList = React.memo(() => {
     return (
         <DataTable
             cols={cols}
-            data={result.isSuccess && result.data.purchases ? result.data.purchases : null}
+            data={purchases}
             pagination={result.isSuccess && result.data.pagination ? result.data.pagination : { count: 0 }}
             title="Purchases"
             message={message}

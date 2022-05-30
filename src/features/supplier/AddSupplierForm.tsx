@@ -7,7 +7,7 @@ import {Input} from "../../app/form/fields";
 import FormCard from "../../app/card/FormCard";
 import ButtonSpinner from "../../app/spinners/ButtonSpinner";
 import SupplierSchema from "./SupplierSchema";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 import {DraftSupplier} from "../api";
 
 

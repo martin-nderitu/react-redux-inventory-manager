@@ -5,8 +5,8 @@ import {TableProps} from "./index";
 
 
 export default function Table ({ cols, data, checked, setChecked, selection }: TableProps) {
-    const [ids] = useState<number[]>(() => {
-        if (selection) { return data.map((item: any) => item.id) }
+    const [ids] = useState<string[]>(() => {
+        if (selection) { return data.map((item) => item.id) }
         else { return [] }
     });
     const selectAllRef = useRef<HTMLInputElement | null>(null);

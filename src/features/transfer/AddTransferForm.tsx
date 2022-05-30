@@ -9,7 +9,7 @@ import FormCard from "../../app/card/FormCard";
 import ButtonSpinner from "../../app/spinners/ButtonSpinner";
 import TransferSchema from "./TransferSchema";
 import {Product} from "../api";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 
 export const AddTransferForm = () => {
     const [message, setMessage] = useState<Message | null>(null);

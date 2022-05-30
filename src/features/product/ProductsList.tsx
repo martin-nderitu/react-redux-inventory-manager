@@ -3,7 +3,7 @@ import React, {useMemo, useEffect, useCallback, useState} from "react";
 import {useGetProductsQuery, useDestroyProductMutation} from "./productSlice";
 import DataTable from "../../app/table/DataTable";
 import {Input} from "../../app/form/fields";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 import {Category} from "../api";
 
 
@@ -26,9 +26,15 @@ export const ProductsList = React.memo(() => {
             name: "Category",
             accessor: "category",
             link: "/category/:categoryId",
-            callback: (category: Category | undefined) => category?.name,
+            callback: (category: Category) => category.name,
         },
     ], []);
+
+    const products = (
+        result.isSuccess ? (
+            result.data.products ? result.data.products : []
+        ) : null
+    );
 
     useEffect(() => {
         if (result.data?.error) {
@@ -57,7 +63,7 @@ export const ProductsList = React.memo(() => {
     return (
         <DataTable
             cols={cols}
-            data={result.isSuccess && result.data.products ? result.data.products : null}
+            data={products}
             pagination={result.isSuccess && result.data.pagination ? result.data.pagination : { count: 0 }}
             title="Products"
             message={message}

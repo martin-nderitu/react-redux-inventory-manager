@@ -9,7 +9,7 @@ import Modal from "../../app/modal/Modal";
 import Spinner from "../../app/spinners/Spinner";
 import ButtonSpinner from "../../app/spinners/ButtonSpinner";
 import SupplierSchema from "./SupplierSchema";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 
 
 type TParams = { supplierId: string; };

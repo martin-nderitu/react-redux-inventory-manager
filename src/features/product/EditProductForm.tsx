@@ -10,7 +10,7 @@ import Modal from "../../app/modal/Modal";
 import Spinner from "../../app/spinners/Spinner";
 import ButtonSpinner from "../../app/spinners/ButtonSpinner";
 import {ProductSchema} from "./ProductSchema";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 import {Category} from "../api";
 
 type TParams = { productId: string; };

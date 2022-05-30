@@ -8,7 +8,7 @@ import {Input, Select, TextArea} from "../../app/form/fields";
 import FormCard from "../../app/card/FormCard";
 import ButtonSpinner from "../../app/spinners/ButtonSpinner";
 import {ProductSchema} from "./ProductSchema";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 import {Category, DraftProduct} from "../api";
 
 

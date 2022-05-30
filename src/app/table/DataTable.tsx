@@ -145,10 +145,9 @@ export default function DataTable (props: DataTableProps) {
                                     data={data}
                                     checked={checked}
                                     setChecked={setChecked}
-                                    // handleChecked={setChecked}
                                     selection={selection}
                                 />
-                                : <h3 className="text-center">No results found</h3>
+                                : <h3 className="text-center">No {title.toLowerCase()} found</h3>
                             }
                         </>
                     )}

@@ -3,7 +3,7 @@ import React, {useMemo, useCallback, useState, useEffect} from "react";
 import {useGetCategoriesQuery, useDestroyCategoryMutation} from "./categorySlice";
 import DataTable from "../../app/table/DataTable";
 import {Input} from "../../app/form/fields";
-import {Message} from "../../app";
+import {Message} from "../../app/index";
 
 
 const CategoriesSearchForm = () => (
@@ -20,6 +20,12 @@ export const CategoriesList = React.memo(() => {
         { name: "Description", accessor: "description" },
     ], []);
 
+    const categories = (
+        result.isSuccess ? (
+            result.data.categories ? result.data.categories : []
+        ) : null
+    );
+    
     useEffect(() => {
         if (result.data?.error) {
             setMessage({ type: "danger", message: result.data.error })
@@ -46,7 +52,7 @@ export const CategoriesList = React.memo(() => {
     return (
         <DataTable
             cols={cols}
-            data={result.isSuccess && result.data.categories ? result.data.categories : null}
+            data={categories}
             pagination={result.isSuccess && result.data.pagination ? result.data.pagination : { count: 0 }}
             title="Categories"
             message={message}
